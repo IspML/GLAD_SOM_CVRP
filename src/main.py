@@ -1,33 +1,17 @@
 import numpy as np
 import random
 # import pandas as pd
+from src.config_and_stats import config_and_stats
+from src.io_helper import read_tsp
 from src.som_intermediate_solution import som_intermediate_solution
-from src.stats_logger import stats_logger
+from src.visualisation import plot_network
 
-def one_some_epoch(problem, som_solution, config, logger):
-    orders = problem.orders
-    depotes = problem.depotes
-
-    random.shuffle(orders)
-    for order in orders:
-        som_solution.present_order_to_solution(order, logger)
-    for depote in depotes:
-        som_solution.present_depote_to_solution(depote, logger)
-    logger.log_solution(som_solution)
-
-def solve_som(problem, config):
-    logger = stats_logger()
-    calculated_vrp_solutions = []
-    capacity_penaly_const = config.capacity_penalty
-
+if __name__ == '__main__':
+    # for i in range(100):
+    #     print(f"{i+1} {(random.random()-0.5)*10} {(random.random()-0.5)*10}")
+    config_and_logger = config_and_stats("todo")
     solution = som_intermediate_solution()
-    solution.init_with_petaloid(problem.number_of_routes, problem, config)
-    orders = problem.orders
-    depotes = problem.depotes
-    for iteration in range(1, config.number_of_iterations):
-        random.shuffle(orders)
-        for order in orders:
-            solution.present_order_to_solution(order, logger)
-        for depote in depotes:
-            solution.present_depote_to_solution(depote, logger)
-        calculated_vrp_solutions.append(solution.to_vrp_solution())
+    solution.init_with_petaloid(number_of_petals=3, number_of_nodes_per_petal=20, scale=3, number_of_dimensions=2)
+    (tsp_map, number_of_dimensions, number_of_cities) = read_tsp("maps/my_test.tsp")
+    plot_network(tsp_map, solution.roads)
+    solution.present_order_to_solution(tsp_map[0], config_and_logger)
