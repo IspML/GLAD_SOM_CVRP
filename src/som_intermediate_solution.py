@@ -100,8 +100,15 @@ class som_intermediate_solution:
         indexes = np.arange(self.number_of_nodes_per_petal)
         d_1 = np.abs(indexes - which_node)
         d_2 = self.number_of_nodes_per_petal - d_1
-        d_matrix = np.max(np.stack(d_1, d_2),0)
-        pass
+        d_matrix = np.max(np.vstack((d_1, d_2)), 0)
+        F = config_and_logger.learning_rate() * config_and_logger.F(d_matrix)
+        change_vector_neighbour_part = (np.roll(self.roads[which_route], 1) + np.roll(self.roads[which_route], -1) -
+                                        self.roads[which_route])
+        change_vector_neighbour_part = change_vector_neighbour_part * config_and_logger.val_lambda()
+        change_vector = (self.roads[which_route] - self.roads[which_route, which_node,:])
+        change_vector = change_vector*np.transpose(np.vstack((F,F)))
+        change_vector = change_vector + change_vector_neighbour_part
+        self.roads[which_route] = self.roads[which_route] + change_vector
 
     # Returns solution as list of lists of orders
     def present_depote_to_solution(self, depote, config_and_logger):
