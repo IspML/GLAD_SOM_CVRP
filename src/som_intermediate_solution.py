@@ -87,30 +87,31 @@ class som_intermediate_solution:
         self.last_iteration_chosen = np.ndarray((self.number_of_petals, self.number_of_nodes_per_petal))
 
     def present_order_to_solution(self, order: np.ndarray, config_and_logger: src.config_and_stats):
-        use_node_mask = (config_and_logger.current_iteration() - self.last_iteration_blocked) > self.blocking_period
+        use_node_mask = ( self.last_iteration_blocked) < (config_and_logger.current_iteration()+2)
         # TODO: overcapacitated routes
-        distances = distances_all_routes_single_order(self.roads,
-                                                      use_node_mask,
-                                                      order)
-        # print(f"Distances from order {order} to all routes {distances}")
+        distances = distances_all_routes_single_order(self.roads, use_node_mask, order)
         chosen_node_ind = np.unravel_index(np.argmin(distances), distances.shape)
-        print(f"chosend node {chosen_node_ind} {self.roads[chosen_node_ind]} for order {order}")
         self.last_iteration_blocked[chosen_node_ind] = config_and_logger.current_iteration()
-        self.move_node_to_order(chosen_node_ind[0], chosen_node_ind[1], config_and_logger)
+        self.move_node_to_order(chosen_node_ind[0], chosen_node_ind[1], order, config_and_logger)
 
     # Muszę najpierw policyczyć odległość dyskretną od wygranego wierzchołka
-    def move_node_to_order(self, which_route: int, which_node: int, config_and_logger: src.config_and_stats):
+    def move_node_to_order(self, which_route: int, which_node: int, order: np.ndarray,
+                           config_and_logger: src.config_and_stats):
         indexes = np.arange(self.number_of_nodes_per_petal)
         d_1 = np.abs(indexes - which_node)
         d_2 = self.number_of_nodes_per_petal - d_1
-        d_matrix = np.max(np.vstack((d_1, d_2)), 0)
-        F = config_and_logger.learning_rate() * config_and_logger.F(d_matrix)
-        change_vector_neighbour_part = (np.roll(self.roads[which_route], 1) + np.roll(self.roads[which_route], -1) -
-                                        self.roads[which_route])
-        change_vector_neighbour_part = change_vector_neighbour_part * config_and_logger.val_lambda()
-        change_vector = (self.roads[which_route] - self.roads[which_route, which_node, :])
-        change_vector = change_vector * np.transpose(np.vstack((F, F)))
-        change_vector = change_vector + change_vector_neighbour_part
+        d_matrix = np.min(np.vstack((d_1, d_2)), 0)
+        F = config_and_logger.F(d_matrix)
+
+        change_vector_neighbour = (np.roll(self.roads[which_route], 1) + np.roll(self.roads[which_route], -1) -
+                                        2*self.roads[which_route])
+        change_vector_neighbour = change_vector_neighbour * config_and_logger.get_lambda()
+
+
+        change_vector_distance = (order - self.roads[which_route])
+        change_vector_distance = change_vector_distance * np.transpose(np.vstack((F, F)))
+        change_vector_distance = change_vector_distance * config_and_logger.get_learning_rate()
+        change_vector = change_vector_distance + change_vector_neighbour*config_and_logger.get_learning_rate()
 
         self.roads[which_route] = self.roads[which_route] + change_vector
 
