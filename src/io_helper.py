@@ -31,12 +31,5 @@ def read_tsp(filename):
                 orders[order_id, id] = float(line.split(' ')[id + 1])
             order_id = order_id + 1
 
-        # for cord_id in range(number_of_dimensions):
-        #     cord_sum = cities[:, cord_id].sum()
-        #     cord_sum = cord_sum / number_of_cities
-        #     cities[:, cord_id] -= cord_sum
-
-        demands = np.ones(orders.shape[0],dtype=int)
-        return (orders,demands, number_of_dimensions, number_of_cities)
-
-
+        demands = np.ones(orders.shape[0], dtype=int)
+        return (orders, demands, number_of_dimensions, number_of_cities)
