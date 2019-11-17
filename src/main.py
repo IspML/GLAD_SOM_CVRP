@@ -10,16 +10,19 @@ from src.visualisation import plot_network, generate_gif
 def one_some_epoch(som_solution: som_intermediate_solution, orders: np.ndarray,
                    config_and_logger: config_and_stats):
     number_of_orders = orders.shape[0]
+    # Randomize order in which orders are presented to solution
     orders_id = []
     for i in range(number_of_orders):
         orders_id.append(i)
     random.shuffle(orders_id)
-
+    # Present each order to solution in a randomized way
     for order_id in orders_id:
         som_solution.present_order_to_solution(order_id, config_and_logger)
 
-    if config_and_logger.current_iteration() % 5 == 1 and config_and_logger.current_iteration() > 50:
-        solution.block_overcapacitated_routes_force_solution(1, config_and_logger)
+    # Block overcapacitated routes
+    if config_and_logger.current_iteration() % config_and_logger.blocking_frequency == 0 and \
+            config_and_logger.current_iteration() > 30:
+        solution.block_overcapacitated_routes_force_solution(config_and_logger.blocking_period, config_and_logger)
 
     # solution.straighten_routes(config_and_logger)
 
@@ -32,17 +35,22 @@ if __name__ == '__main__':
     number_of_neurons_per_ring = 90
     number_of_rings = 3
 
-    (tsp_map, demands, number_of_dimensions, number_of_cities) = read_tsp("maps/my_test.tsp")
-    tsp_map /= 5
+    (orders, demands, number_of_dimensions, number_of_cities) = read_tsp("maps/my_test.tsp")
+    # Regularizing
+    orders /= 5
 
-    routes_capacity = np.ones((number_of_rings)) * int((tsp_map.shape[0] / number_of_rings + 2))
+    #
+    routes_capacity = np.ones((number_of_rings)) * int((orders.shape[0] / number_of_rings + 2))
 
     config_and_logger = config_and_stats(number_of_neuorons=number_of_neurons_per_ring,
-                                         orders=tsp_map,
-                                         alfa=0.03,
+                                         orders=orders,
+                                         decay_rate=0.03,
                                          mi=0.7,
                                          lambda_val=0.03,
-                                         v=0.05)
+                                         v=0.05,
+                                         learning_rate_decay=0.01,
+                                         blocking_frequency=1,
+                                         blocking_period=2)
 
     solution = som_intermediate_solution()
 
@@ -53,13 +61,15 @@ if __name__ == '__main__':
 
     solution.set_routes_capacity(routes_capacity)
 
-    solution.set_orders(tsp_map, demands)
+    solution.set_orders(orders, demands)
 
     for i in range(250):
-        one_some_epoch(solution, tsp_map, config_and_logger)
+        one_some_epoch(solution, orders, config_and_logger)
         if i % 10 == 0:
-            plot_network(tsp_map, solution.routes, images_for_gif=images_for_gif)
-        config_and_logger.calculate_distances_to_routes(solution.routes)
+            plot_network(orders, solution.routes, images_for_gif=images_for_gif)
 
         print(
-            f"itaration {i} mse {config_and_logger.MSE()} routes routes remaingin capacity {solution.route_remaining_capacity} \n   last  chosen {solution.blocked_until[:, 0]}")
+            f"iteration {i} mse {config_and_logger.MSE()} routes routes "+
+            f"remaining capacity {solution.route_remaining_capacity}")
+    final_solution,length = solution.to_vrp_solution()
+    print(f"final length {length}")

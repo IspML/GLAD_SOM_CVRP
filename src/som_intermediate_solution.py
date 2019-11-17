@@ -28,8 +28,11 @@ class som_intermediate_solution:
         self.routes = np.ndarray(
             shape=(self.number_of_petals, self.number_of_nodes_per_petal, self.number_of_dimensions))
         self.blocked_until = np.zeros((self.number_of_petals, self.number_of_nodes_per_petal))
+
+        self.route_remaining_capacity_this_iteration = []
         self.route_remaining_capacity = []
         self.route_max_capacity = []
+
         self.order_to_route_assignments = []
         self.demands = []
 
@@ -38,6 +41,7 @@ class som_intermediate_solution:
     def set_routes_capacity(self, routes_max_capacity: np.ndarray):
         self.route_max_capacity = routes_max_capacity.copy()
         self.route_remaining_capacity = routes_max_capacity.copy()
+        self.route_remaining_capacity_this_iteration = routes_max_capacity.copy()
 
     def set_orders(self, orders, demands):
         self.orders = orders
@@ -101,7 +105,7 @@ class som_intermediate_solution:
         self.last_iteration_chosen[chosen_node_ind] = config_and_logger.current_iteration()
         self.move_node_to_order(chosen_node_ind[0], chosen_node_ind[1], order_id, config_and_logger)
 
-    # Muszę najpierw policyczyć odległość dyskretną od wygranego wierzchołka
+
     def move_node_to_order(self, which_route: int, which_node: int, order_id: int,
                            config_and_logger: src.config_and_stats):
         order = self.orders[order_id]
@@ -134,7 +138,7 @@ class som_intermediate_solution:
         self.blocked_until[routes_to_block, :] = config_and_logger.current_iteration() + epochs_to_block
 
     def block_overcapacitated_routes_force_solution(self, epochs_to_block, config_and_logger: src.config_and_stats):
-        forced_solution = self.to_vrp_solution()
+        forced_solution, _ = self.to_vrp_solution()
         for route_id in range(self.number_of_petals):
             load = 0
             for node_id in range(self.number_of_nodes_per_petal):
@@ -144,29 +148,30 @@ class som_intermediate_solution:
             self.route_remaining_capacity[route_id] = self.route_max_capacity[route_id] - load
 
     def straighten_routes(self, config: src.config_and_stats):
-        straighten_node = np.argwhere(self.last_iteration_chosen < config.current_iteration() +1)
-        straighten_node_next = (straighten_node+1)
-        straighten_node_next[0,:]-=1
-        straighten_node_prev = straighten_node-1
-        straighten_node_prev[0,:]+=1
-
-
-        self.routes[straighten_node] = 0.5 * (self.routes[straighten_node+1]+self.routes[straighten_node-1])
-        # self.routes = np.where(np.vstack([straighten_node, straighten_node]),
-        #                        0.5 * (np.roll(self.routes, axis=1, shift=1) + np.roll(self.routes, axis=1, shift=-1)),
-        #                        self.routes)
-
-        # weight = [0.7, 0.1, 0.1, 0.05, 0.05]
-        # self.routes = weight[0] * self.routes + \
-        #               np.roll(self.routes, axis=1, shift=1) * weight[1] + \
-        #               np.roll(self.routes, axis=1, shift=-1) * weight[2] + \
-        #               np.roll(self.routes, axis=1, shift=2) * weight[3] + \
-        #               np.roll(self.routes, axis=1, shift=-2) * weight[4]
+        for route_id in range(self.number_of_petals):
+            straighten_node = np.argwhere(self.last_iteration_chosen[route_id] < config.current_iteration() - 10)
+            if straighten_node.size < 2:
+                return
+            next_node = (straighten_node + 1) % self.number_of_nodes_per_petal
+            prev_node = (straighten_node - 1 + self.number_of_nodes_per_petal) % self.number_of_nodes_per_petal
+            self.routes[route_id, straighten_node] = 0.5 * (
+                    self.routes[route_id, next_node] + self.routes[route_id, prev_node])
 
     def present_depote_to_solution(self, depote: np.ndarray, config_and_logger: src.config_and_stats):
         pass
 
     def to_vrp_solution(self):
+        def distance_between_orders(a, b):
+            a = self.orders[a]
+            b = self.orders[b]
+            c = a - b
+            c = c ** 2
+            c = np.sum(c)
+            c = math.sqrt(c)
+
+            return c
+
+        sum_of_distances = 0
         all_trues = np.ones((self.routes.shape[0], self.routes.shape[1]), dtype=bool)
 
         all_distances = distances_all_route_all_orders(self.routes, all_trues, self.orders)
@@ -185,4 +190,15 @@ class som_intermediate_solution:
             route_id = int(closest_route_id[order_id])
             node_id = int(closest_node_id[order_id])
             solution[route_id][node_id].append(order_id)
-        return solution
+        flattened_solution = []
+        for route_id in range(self.number_of_petals):
+            current_route = []
+            prev_order = -1
+            for orders_in_node in solution[route_id]:
+                for order in orders_in_node:
+                    if prev_order != -1:
+                        sum_of_distances += distance_between_orders(prev_order, order)
+                    prev_order = order
+                    current_route.append(order)
+            flattened_solution.append(current_route)
+        return solution, sum_of_distances
