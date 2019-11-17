@@ -13,11 +13,11 @@ def plot_network(cities, roads, name='diagram.png',images_for_gif=[]):
     x_2 = [cities[i, 1] for i in range(cities.shape[0])]
     plt.plot(x_1, x_2, 'ro', marker = 'd')
 
-    plt.axis([-1, 1, -1, 1])
+    plt.axis([0, 1, 0, 1])
     for road_id in range(roads.shape[0]):
         x_1 = [roads[road_id, i, 0] for i in range(roads.shape[1])]
         x_2 = [roads[road_id, i, 1] for i in range(roads.shape[1])]
-        plt.plot(x_1, x_2, linestyle="--",marker="o",label=f"route {road_id}")
+        plt.plot(x_1, x_2, linestyle="--",label=f"route {road_id}")
         plt.legend()
         # plt.plot(x_1, x_2, linestyle="--",marker='o')
         # plt.imshow(x_1, x_2,  animated=True)

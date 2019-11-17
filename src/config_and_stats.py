@@ -7,38 +7,39 @@ class config_and_stats:
     # mi - learning rate towards chosen node
     # lambda - learning rate towards neigbours
     # v - capacity penalty weight
-    def __init__(self, orders, number_of_neuorons=100, decay_rate=1, mi=0.6, mi_decay=0.05, lambda_val=0.1,
+    def __init__(self, orders, number_of_neuorons=100, decay_rate=1.0, mi=0.6, mi_decay=0.05, lambda_val=0.1,
                  lambda_val_decay=0.15, v=0.1, v_decay=0.05, expected_penalty_ratio=1.0, expected_penalty_ratio_decay=0,
-                 blocking_period=3, blocking_frequency=7, plotting_frequency=10, selfcalculate_v=True,
+                 blocking_period=3, blocking_frequency=7,begin_blocking=30, plotting_frequency=10, selfcalculate_v=True,
                  G_neurons_percentage=0.2, G_decay=0.05, F_neurons_percentage=0.3, learninig_rate=1,
                  learning_rate_decay=-0.01):
         self.orders = orders
         self.current_iteration_val = 1
         self.G = G_neurons_percentage * number_of_neuorons
-        self.G_decay = G_decay
+        self.G_decay = G_decay * decay_rate
         self.F_neurons_percentage = F_neurons_percentage
         self.number_of_neurons = number_of_neuorons
 
         self.decay_rate = decay_rate
         self.learning_rate = learninig_rate
-        self.learning_rate_decay = learning_rate_decay
+        self.learning_rate_decay = learning_rate_decay * decay_rate
         self.mi = mi
-        self.mi_decay = mi_decay
+        self.mi_decay = mi_decay * decay_rate
         self.v = v
-        self.v_decay = v_decay
+        self.v_decay = v_decay * decay_rate
         self.lambda_val = lambda_val
-        self.lambda_val_decay = lambda_val_decay
+        self.lambda_val_decay = lambda_val_decay * decay_rate
+        self.expected_penalty_ratio = expected_penalty_ratio
+        self.expected_penalty_ratio_decay = expected_penalty_ratio_decay * decay_rate
+
         self.blocking_period = blocking_period
         self.blocking_frequency = blocking_frequency
-        self.expected_penalty_ratio = expected_penalty_ratio
-        self.expected_penalty_ratio_decay = expected_penalty_ratio_decay
+        self.begin_blocking = begin_blocking
         self.plotting_frequency = plotting_frequency
 
         self.closest_node_distance = np.ndarray((orders.shape[0]))
         self.sum_of_distances = 0.0
         self.sum_of_penalties = 0.0
         self.selfcalculate_penalty_weight = selfcalculate_v
-
 
     def __str__(self):
         return f"conf:\nalfa:{self.alfa} mi:{self.mi} learning_rate:{self.learning_rate} lambda:{self.lambda_val} G:{self.G}"

@@ -45,8 +45,11 @@ class som_intermediate_solution:
 
     def set_orders(self, orders, demands):
         self.orders = orders
-        self.order_to_route_assignments = np.zeros((orders.shape[0]), dtype=int) - 1
+        self.order_to_route_assignments = np.zeros((self.orders.shape[0]), dtype=int) - 1
         self.demands = demands
+
+    def prepare_new_epoch(self):
+        self.route_remaining_capacity_this_iteration = self.route_max_capacity.copy()
 
     def init_with_petaloid(self, number_of_petals: int, number_of_nodes_per_petal: int, scale: float,
                            number_of_dimensions: int):
@@ -71,13 +74,14 @@ class som_intermediate_solution:
                 self.routes[petal, i, 0] = x
                 self.routes[petal, i, 1] = y
 
+        self.routes += 0.5
         # Last iteration node was blocked
         self.blocked_until = np.zeros((self.number_of_petals, self.number_of_nodes_per_petal))
         self.last_iteration_chosen = np.zeros((self.number_of_petals, self.number_of_nodes_per_petal))
         self.route_remaining_capacity = np.ndarray((self.number_of_petals))
 
     def present_order_to_solution(self, order_id: int,
-                                  config_and_logger: src.config_and_stats):
+                                  config_and_logger: src.config_and_stats, ):
         order = self.orders[order_id]
 
         use_node_mask = (self.blocked_until < (config_and_logger.current_iteration())) & (
@@ -91,7 +95,7 @@ class som_intermediate_solution:
         capacity_penalties = capacity_penalty.calculate_penalty_one_order_all_nodes(self.demands[order_id],
                                                                                     self.number_of_nodes_per_petal,
                                                                                     self.route_max_capacity,
-                                                                                    self.route_remaining_capacity) \
+                                                                                    self.route_remaining_capacity_this_iteration) \
                              * config_and_logger.v
 
         goodness_of_node = distances + capacity_penalties
@@ -105,10 +109,36 @@ class som_intermediate_solution:
         self.last_iteration_chosen[chosen_node_ind] = config_and_logger.current_iteration()
         self.move_node_to_order(chosen_node_ind[0], chosen_node_ind[1], order_id, config_and_logger)
 
+    def present_depote_to_solution(self, depote: np.ndarray, config_and_logger: src.config_and_stats):
+        last_iteration_mask = self.last_iteration_chosen < config_and_logger.current_iteration()
+        for route_id in range(self.number_of_petals):
+            route_mask = np.zeros((self.routes.shape[0], self.routes.shape[1]), dtype=bool)
+            route_mask[route_id, :] = True
+            use_node_mask = route_mask & last_iteration_mask
+
+            # Calculate distances and capacity penalties
+            distances = distances_all_routes_single_order(self.routes, use_node_mask, depote)
+
+            if np.min(distances) == sys.float_info.max:
+                return
+
+            goodness_of_node = distances
+
+            # Chose node
+            chosen_node_ind = np.unravel_index(np.argmin(goodness_of_node), goodness_of_node.shape)
+            # Log statistics
+            # Block node for the rest of the epoch and move node
+            self.last_iteration_chosen[chosen_node_ind] = config_and_logger.current_iteration()
+            self.move_node_to_order(chosen_node_ind[0], chosen_node_ind[1], 0, config_and_logger, False, depote)
 
     def move_node_to_order(self, which_route: int, which_node: int, order_id: int,
-                           config_and_logger: src.config_and_stats):
+                           config_and_logger: src.config_and_stats,
+                           update_capacitites=True,
+                           depote=None):
+
         order = self.orders[order_id]
+        if depote is not None:
+            order = depote
         indexes = np.arange(self.number_of_nodes_per_petal)
         d_1 = np.abs(indexes - which_node)
         d_2 = self.number_of_nodes_per_petal - d_1
@@ -128,14 +158,21 @@ class som_intermediate_solution:
         change_vector = change_vector * config_and_logger.get_learning_rate()
 
         self.routes[which_route] = self.routes[which_route] + change_vector
-        # if self.order_to_route_assignments[order_id] != -1:
-        #     self.route_remaining_capacity[self.order_to_route_assignments[order_id]] += self.demands[order_id]
-        # self.route_remaining_capacity[which_route] -= self.demands[order_id]
-        self.order_to_route_assignments[order_id] = which_route
+        if update_capacitites == True:
+            self.route_remaining_capacity_this_iteration[which_route] -= self.demands[order_id]
 
-    def block_overcapacitated_routes(self, epochs_to_block, config_and_logger: src.config_and_stats):
-        routes_to_block = np.argwhere(self.route_remaining_capacity < 0)
-        self.blocked_until[routes_to_block, :] = config_and_logger.current_iteration() + epochs_to_block
+            if self.route_remaining_capacity_this_iteration[which_route] < 0:
+                self.block_overcapacitated_routes_original(config_and_logger)
+            self.order_to_route_assignments[order_id] = which_route
+
+    def block_overcapacitated_routes_original(self, config_and_logger: src.config_and_stats):
+        routes_to_block = np.argwhere(self.route_remaining_capacity_this_iteration < 0)
+        epochs_to_block = 0
+        if config_and_logger.current_iteration() % config_and_logger.blocking_frequency == 0 and \
+                config_and_logger.current_iteration() > config_and_logger.begin_blocking:
+            epochs_to_block = config_and_logger.blocking_period
+        self.blocked_until[routes_to_block, :] = config_and_logger.current_iteration() + \
+                                                 epochs_to_block
 
     def block_overcapacitated_routes_force_solution(self, epochs_to_block, config_and_logger: src.config_and_stats):
         forced_solution, _ = self.to_vrp_solution()
@@ -156,9 +193,6 @@ class som_intermediate_solution:
             prev_node = (straighten_node - 1 + self.number_of_nodes_per_petal) % self.number_of_nodes_per_petal
             self.routes[route_id, straighten_node] = 0.5 * (
                     self.routes[route_id, next_node] + self.routes[route_id, prev_node])
-
-    def present_depote_to_solution(self, depote: np.ndarray, config_and_logger: src.config_and_stats):
-        pass
 
     def to_vrp_solution(self):
         def distance_between_orders(a, b):
