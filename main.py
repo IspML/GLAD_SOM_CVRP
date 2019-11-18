@@ -10,9 +10,9 @@ from src.io_helper import read_tsp
 if __name__ == '__main__':
     np.seterr(all='warn')
     (orders, demands, depote, capacity, number_of_rings, number_of_dimensions, number_of_cities) = read_tsp(
-        "maps/Christophides/M-n151-k12")
+        "src/maps/Christophides/M-n151-k12")
 
-    output_path = f"results/{str(datetime.now()).replace(' ', '')}"
+    output_path = f"src/results/{str(datetime.now()).replace(' ', '')}"
     os.mkdir(output_path)
 
     nr_of_tests = 3
