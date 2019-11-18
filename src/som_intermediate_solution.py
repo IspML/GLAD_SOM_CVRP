@@ -194,10 +194,18 @@ class som_intermediate_solution:
             self.routes[route_id, straighten_node] = 0.5 * (
                     self.routes[route_id, next_node] + self.routes[route_id, prev_node])
 
-    def to_vrp_solution(self):
+    def to_vrp_solution(self, depote: np.ndarray, demands: np.ndarray):
+        route_loads = np.zeros((self.number_of_petals),dtype=int)
         def distance_between_orders(a, b):
-            a = self.orders[a]
-            b = self.orders[b]
+            if a == -1:
+                a = depote
+            else:
+                a = self.orders[a]
+            if b == -1:
+                b = depote
+            else:
+                b = self.orders[b]
+
             c = a - b
             c = c ** 2
             c = np.sum(c)
@@ -208,7 +216,11 @@ class som_intermediate_solution:
         sum_of_distances = 0
         all_trues = np.ones((self.routes.shape[0], self.routes.shape[1]), dtype=bool)
 
+        depote_to_routes_distances = distances_all_routes_single_order(self.routes, all_trues, depote)
+        closest_to_depote_on_each_route = np.argmin(depote_to_routes_distances, axis=1)
+
         all_distances = distances_all_route_all_orders(self.routes, all_trues, self.orders)
+
         all_distances_flatten = all_distances.reshape(
             (all_distances.shape[0], all_distances.shape[1] * all_distances.shape[2]))
 
@@ -219,20 +231,32 @@ class som_intermediate_solution:
         solution = [[[] for node_id in range(self.number_of_nodes_per_petal)] for route_id in
                     range(self.number_of_petals)]
 
-        mapped_orders = {}
         for order_id in range(self.orders.shape[0]):
             route_id = int(closest_route_id[order_id])
+            route_loads[route_id] += demands[order_id]
             node_id = int(closest_node_id[order_id])
             solution[route_id][node_id].append(order_id)
+
+        for route_id in range(self.number_of_petals):
+            solution[route_id][closest_to_depote_on_each_route[route_id]].append(-1)
+
         flattened_solution = []
         for route_id in range(self.number_of_petals):
             current_route = []
-            prev_order = -1
+            prev_order = None
             for orders_in_node in solution[route_id]:
                 for order in orders_in_node:
-                    if prev_order != -1:
+                    if prev_order is not None and prev_order:
                         sum_of_distances += distance_between_orders(prev_order, order)
                     prev_order = order
                     current_route.append(order)
+
+            while True:
+                if current_route[0] != -1:
+                    current_route.append(current_route.pop(0))
+                else:
+                    current_route.pop(0)
+                    break
             flattened_solution.append(current_route)
-        return solution, sum_of_distances
+
+        return flattened_solution,route_loads, sum_of_distances
