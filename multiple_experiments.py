@@ -11,11 +11,12 @@ if __name__ == '__main__':
     np.seterr(all='warn')
     (orders, demands, depote, capacity, number_of_rings, number_of_dimensions, number_of_cities) = read_tsp(
         "src/maps/Christophides/M-n151-k12")
+        # "src/maps/Christophides/M-n151-k12")
 
     output_path = f"src/results/{str(datetime.now()).replace(' ', '')}"
     os.mkdir(output_path)
 
-    nr_of_tests = 3
+    nr_of_tests = 1
     for i in range(nr_of_tests):
         with open(f"{output_path}/{i}th_test", "w+") as output_file:
             number_of_neurons_per_ring = int(orders.shape[0] * 4 / number_of_rings)
@@ -43,7 +44,7 @@ if __name__ == '__main__':
             )
 
             final_solution, route_loads, length = solve_using_som(orders, demands, depote, number_of_rings,
-                                                                  capacity, config_and_logger, 130)
+                                                                  capacity, config_and_logger, 200)
 
             overload = max(route_loads) - capacity
             print(f" \n\nfinal length {length}\n\nfinal loads {route_loads}\n\noverload {overload}\n\n")

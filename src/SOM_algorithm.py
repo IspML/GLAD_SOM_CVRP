@@ -4,6 +4,7 @@ import numpy as np
 
 from src.config_and_stats import config_and_stats
 from src.som_intermediate_solution import som_intermediate_solution
+from src.som_intermediate_solution_retreat import som_intermediate_solution_retreat
 from src.visualisation import plot_network
 
 
@@ -26,7 +27,11 @@ def one_some_epoch(som_solution: som_intermediate_solution,
     som_solution.present_depote_to_solution(depote, config_and_logger)
 
     som_solution.straighten_routes(config_and_logger)
+    config_and_logger.next_iteration()
+    random.shuffle(orders_id)
 
+    for order_id in orders_id:
+        som_solution.present_order_to_solution_retreat(order_id, config_and_logger)
     config_and_logger.next_iteration()
 
 
