@@ -39,3 +39,6 @@ def distances_all_route_all_orders(routes, use_node_mask, orders):
                              range(number_of_orders)]
     distances_from_orders = np.stack(distances_from_orders)
     return distances_from_orders
+
+def euclidean_distance(x1, x2, y1, y2):
+    return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)

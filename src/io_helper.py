@@ -51,10 +51,12 @@ def read_tsp(filename):
             demand = int(line.split(' ')[1])
             demands[dim_id - 1] = demand
 
-        depote -= np.min(orders)
-        orders -= np.min(orders)
+        line
+
+        depote -= np.min(orders,axis=0)
+        orders -= np.min(orders,axis=0)
         scale = np.max(orders)
         depote /= scale
         orders /= np.max(scale)
 
-        return (orders, demands, depote, capacity,number_of_vehicles, number_of_dimensions, number_of_cities)
+        return (orders, demands, depote, capacity,number_of_vehicles, number_of_dimensions, number_of_cities,scale)

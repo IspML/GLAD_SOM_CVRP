@@ -195,13 +195,19 @@ class som_intermediate_solution:
                     self.routes[route_id, next_node] + self.routes[route_id, prev_node])
 
     def to_vrp_solution(self, depote: np.ndarray, demands: np.ndarray):
-        route_loads = np.zeros((self.number_of_petals),dtype=int)
+        route_loads = np.zeros((self.number_of_petals), dtype=int)
+
+        def distance_difference(a, b, x, c, d):
+            old = distance_between_orders(a, x) + distance_between_orders(x, b) + distance_between_orders(c, d)
+            new = distance_between_orders(c, x) + distance_between_orders(x, d) + distance_between_orders(a, b)
+            return new - old
+
         def distance_between_orders(a, b):
-            if a == -1:
+            if a == -1 or a == self.orders.shape[0]:
                 a = depote
             else:
                 a = self.orders[a]
-            if b == -1:
+            if b == -1 or b == self.orders.shape[0]:
                 b = depote
             else:
                 b = self.orders[b]
@@ -255,16 +261,61 @@ class som_intermediate_solution:
                 if current_route[0] != -1:
                     current_route.append(current_route.pop(0))
                 else:
-                    current_route.pop(0)
+                    # current_route.pop(0)
+                    current_route.append(-1)
                     break
             flattened_solution.append(current_route)
 
-        return flattened_solution,route_loads, sum_of_distances
+        # Now we have to make sure solution i feasable
+        it = 0
+        most_overloaded_route = max((x, i) for i, x in enumerate(route_loads))[1]
+        while route_loads[most_overloaded_route] > self.route_max_capacity[most_overloaded_route]:
+            #     Dla każdego zamówienia na tje trasie znajdź najbliższe dwa zamówienia między które mogę to wstawic
+            which_order_move = -1
+            to_which_route = -1
+            after_which_order = -1
+            smallest_distance_delta = sys.float_info.max
 
+            for order_id in range(len(flattened_solution[most_overloaded_route])):
+                if flattened_solution[most_overloaded_route][order_id] != -1:
+                    for route_to_move in range(len(flattened_solution)):
+                        if route_loads[route_to_move] + demands[order_id] <= self.route_max_capacity[route_to_move]:
+                            for node_before in range(len(flattened_solution[route_to_move]) - 1):
+                                a = flattened_solution[most_overloaded_route][order_id - 1]
+                                x = flattened_solution[most_overloaded_route][order_id]
+                                b = flattened_solution[most_overloaded_route][order_id + 1]
 
+                                c = flattened_solution[route_to_move][node_before]
+                                d = flattened_solution[route_to_move][node_before + 1]
+
+                                distance_delta = distance_difference(a, b, x, c, d)
+
+                                if distance_delta < smallest_distance_delta:
+                                    to_which_route = route_to_move
+                                    after_which_order = node_before
+                                    smallest_distance_delta = distance_delta
+                                    which_order_move = order_id
+            #     Now we have to actually move the order from one route to another
+            route_loads[most_overloaded_route] -= \
+                self.demands[flattened_solution[most_overloaded_route][which_order_move]]
+            route_loads[to_which_route] += self.demands[flattened_solution[most_overloaded_route][which_order_move]]
+            flattened_solution[to_which_route].insert(after_which_order+1,
+                                                      flattened_solution[most_overloaded_route][which_order_move])
+            flattened_solution[most_overloaded_route].pop(which_order_move)
+            sum_of_distances += smallest_distance_delta
+            most_overloaded_route = max((x, i) for i, x in enumerate(route_loads))[1]
+            it += 1
+            if it > 100:
+                break
+
+        sum_of_distances = 0
+        for route in flattened_solution:
+            for order_id in range(len(route) - 1):
+                sum_of_distances += distance_between_orders(route[order_id], route[order_id + 1])
+        return flattened_solution, route_loads, sum_of_distances
 
     def present_order_to_solution_retreat(self, order_id: int,
-                                  config_and_logger: src.config_and_stats):
+                                          config_and_logger: src.config_and_stats):
         order = self.orders[order_id]
 
         use_node_mask = (self.last_iteration_chosen < (config_and_logger.current_iteration()))
@@ -293,9 +344,9 @@ class som_intermediate_solution:
         self.move_node_to_order_retreat(chosen_node_ind[0], chosen_node_ind[1], order_id, config_and_logger)
 
     def move_node_to_order_retreat(self, which_route: int, which_node: int, order_id: int,
-                           config_and_logger: src.config_and_stats,
-                           update_capacitites=True,
-                           depote=None):
+                                   config_and_logger: src.config_and_stats,
+                                   update_capacitites=True,
+                                   depote=None):
 
         order = self.orders[order_id]
         if depote is not None:
@@ -319,7 +370,7 @@ class som_intermediate_solution:
         change_vector = change_vector * config_and_logger.get_learning_rate()
 
         if self.demands[order_id] > self.route_remaining_capacity_this_iteration[which_route] and depote is None:
-            if config_and_logger.current_iteration()>50:
+            if config_and_logger.current_iteration() > 50:
                 change_vector *= -0.5
             else:
                 change_vector *= -0.3

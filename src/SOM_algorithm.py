@@ -27,11 +27,11 @@ def one_some_epoch(som_solution: som_intermediate_solution,
     som_solution.present_depote_to_solution(depote, config_and_logger)
 
     som_solution.straighten_routes(config_and_logger)
-    config_and_logger.next_iteration()
-    random.shuffle(orders_id)
-
-    for order_id in orders_id:
-        som_solution.present_order_to_solution_retreat(order_id, config_and_logger)
+    # config_and_logger.next_iteration()
+    # random.shuffle(orders_id)
+    #
+    # for order_id in orders_id:
+    #     som_solution.present_order_to_solution_retreat(order_id, config_and_logger)
     config_and_logger.next_iteration()
 
 
@@ -43,6 +43,7 @@ def solve_using_som(orders: np.ndarray, demands: np.ndarray, depote: np.ndarray,
 
     som_solution = som_intermediate_solution()
     som_solution.init_with_petaloid(number_of_routes, number_of_neurons_per_ring, 0.3, orders.shape[1])
+    # som_solution.routes[:,:,0]-=0.2
     som_solution.set_orders(orders, demands)
     som_solution.set_routes_capacity(routes_capacity)
 

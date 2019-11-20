@@ -17,6 +17,8 @@ def plot_network(cities, roads, name='diagram.png',images_for_gif=[]):
     for road_id in range(roads.shape[0]):
         x_1 = [roads[road_id, i, 0] for i in range(roads.shape[1])]
         x_2 = [roads[road_id, i, 1] for i in range(roads.shape[1])]
+        x_1.append(x_1[0])
+        x_2.append(x_2[0])
         plt.plot(x_1, x_2, linestyle="-",label=f"route {road_id}")
         plt.legend()
         # plt.plot(x_1, x_2, linestyle="--",marker='o')
@@ -25,7 +27,31 @@ def plot_network(cities, roads, name='diagram.png',images_for_gif=[]):
     # images_for_gif.append(ims)
 
     plt.show()
-#
+
+def plot_final_solution(orders,roads,depote):
+    fig = plt.figure()
+    ims = []
+    x_1 = [orders[i, 0] for i in range(orders.shape[0])]
+    x_2 = [orders[i, 1] for i in range(orders.shape[0])]
+    plt.plot(x_1, x_2, 'ro', marker = 'd')
+
+    plt.axis([0, 1, 0, 1])
+    for road_id in range(len(roads)):
+
+        x_1 = [orders[roads[road_id][i],0] for i in range(len(roads[road_id])) if roads[road_id][i] !=-1]
+        x_2 = [orders[roads[road_id][i],1] for i in range(len(roads[road_id])) if roads[road_id][i] !=-1]
+        x_1.insert(0,depote[0])
+        x_2.insert(0,depote[1   ])
+        x_1.append(depote[0])
+        x_2.append(depote[1])
+        plt.plot(x_1, x_2, linestyle="-",label=f"route {road_id}")
+        plt.legend()
+        # plt.plot(x_1, x_2, linestyle="--",marker='o')
+        # plt.imshow(x_1, x_2,  animated=True)
+        # ims.append( plt.imshow(x_1, x_2, linestyle="--", animated=True))
+    # images_for_gif.append(ims)
+
+    plt.show()
 
 def generate_gif(images_for_gif):
     # Nawet nie zaczęte
