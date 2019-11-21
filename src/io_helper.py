@@ -29,7 +29,7 @@ def read_tsp(filename):
                 number_of_dimensions = int(line.split()[-1])
             i = i + 1
 
-        orders = np.ndarray(shape=(number_of_cities - 1, number_of_dimensions))
+        orders = np.ndarray(shape=(number_of_cities , number_of_dimensions))
         print('Problem with {} cities read.'.format(number_of_cities))
 
         order_id = 0
@@ -38,10 +38,8 @@ def read_tsp(filename):
             order = np.ndarray((number_of_dimensions), float)
             for dim_id in range(number_of_dimensions):
                 order[dim_id] = float(line.split(' ')[dim_id + 1])
-            if order_id == 0:
-                depote = order
             else:
-                orders[order_id - 1] = order
+                orders[int(line.split(' ')[0]) -1] = order
             order_id = order_id + 1
 
         demands = np.ndarray((orders.shape[0]), dtype=int)
@@ -51,10 +49,16 @@ def read_tsp(filename):
             demand = int(line.split(' ')[1])
             demands[dim_id - 1] = demand
 
-        line
+        depote_id = int(lines[i+order_id+number_of_cities+2])
+        depote = orders[depote_id-1]
+        depote = depote.copy()
+
+        a  =np.min(orders,axis=0)
 
         depote -= np.min(orders,axis=0)
-        orders -= np.min(orders,axis=0)
+        for i in range(number_of_cities):
+            orders[i] -=a
+        # orders -= np.min(orders,axis=0)
         scale = np.max(orders)
         depote /= scale
         orders /= np.max(scale)

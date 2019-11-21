@@ -10,10 +10,10 @@ from src.visualisation import plot_final_solution
 
 if __name__ == '__main__':
     np.seterr(all='warn')
-    (orders, demands, depote, capacity, number_of_rings, number_of_dimensions, number_of_cities,scale) = read_tsp(
-
-        # "src/maps/quantum1-100-1.tsp")
-        "src/maps/Christophides/E-n76-k7")
+    path_to_test = "/home/miron/PycharmProjects/GLAD_SOM_CVRP/src/maps/quantum1-100-1/quantum1-100-1.geo"
+    path_to_distance_matrix = "/home/miron/PycharmProjects/GLAD_SOM_CVRP/src/maps/quantum1-100-1/quantum1-100-1"
+    (orders, demands, depote, capacity, number_of_rings, number_of_dimensions, number_of_cities, scale) = read_tsp(path_to_test)
+    # "src/maps/Christophides/E-n76-k7")
     # "src/maps/Christophides/M-n151-k12")
     # capacity-=10
     output_path = f"src/results/{str(datetime.now()).replace(' ', '')}"
@@ -51,9 +51,11 @@ if __name__ == '__main__':
                                                                   capacity, config_and_logger, 150)
 
             overload = max(route_loads) - capacity
-            print(f" \n\nfinal length {length*scale}\n\nfinal loads {route_loads}\n\noverload {overload}\n\n")
+            print(f" \n\nfinal length {length * scale}\n\nfinal loads {route_loads}\n\noverload {overload}\n\n")
             plot_final_solution(orders, final_solution, depote)
             plot_final_solution(orders, final_solution, depote)
             output_file.write("final length : " + str(length) + "\n" +
                               "overload : " + str(overload) + "\n" +
                               "solution : \n" + str(final_solution))
+
+            orignal

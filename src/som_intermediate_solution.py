@@ -56,10 +56,10 @@ class som_intermediate_solution:
         self.number_of_petals = number_of_petals
         self.number_of_dimensions = number_of_dimensions
         self.number_of_nodes_per_petal = number_of_nodes_per_petal
-        self.routes = np.ndarray(
+        self.routes = np.zeros(
             shape=(self.number_of_petals, self.number_of_nodes_per_petal, self.number_of_dimensions),
             dtype=float)
-        self.routes = np.ndarray(
+        self.routes = np.zeros(
             shape=(self.number_of_petals, self.number_of_nodes_per_petal, self.number_of_dimensions),
             dtype=float)
 
@@ -150,7 +150,8 @@ class som_intermediate_solution:
         change_vector_neighbour = change_vector_neighbour * config_and_logger.get_lambda()
 
         change_vector_distance = (order - self.routes[which_route])
-        change_vector_distance = change_vector_distance * np.transpose(np.vstack((F, F)))
+
+        change_vector_distance = change_vector_distance * np.transpose(np.vstack([F for _ in range(self.number_of_dimensions)]))
         change_vector_distance = change_vector_distance
 
         change_vector = change_vector_distance + change_vector_neighbour
